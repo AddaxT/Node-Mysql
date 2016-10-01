@@ -1,8 +1,6 @@
 var oauth2orize = require('oauth2orize');
 var moment = require('moment');
 
-var model = new OAuthModel();
-
 var server = oauth2orize.createServer();
 
 function executeQuery(methodName, query, parameters, successCallback, errorCallback) {
