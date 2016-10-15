@@ -8,7 +8,11 @@ function Contact() {
         connection.acquire(function (err, con) {
             con.query('SELECT C.ID, C.NAME, C.COMPANY, P.ID CONSECUTIVE, P.PHONE FROM CONTACT C, PHONE P WHERE C.ID = P.CONTACT_ID', function (err, result) {
                 con.release();
-                res.send(result);
+                if (err) {
+                    res.send({ status: 1, message: 'Error al consultar el listado de contactos', error: err });
+                } else {
+                    res.send(result);
+                }
             });
         });
     };
@@ -17,7 +21,11 @@ function Contact() {
         connection.acquire(function (err, con) {
             con.query('SELECT C.ID, C.NAME, C.COMPANY, P.ID CONSECUTIVE, P.PHONE FROM CONTACT C, PHONE P WHERE C.ID = P.CONTACT_ID AND C.ID = ?', contactId, function (err, result) {
                 con.release();
-                res.send(result);
+                if (err) {
+                    res.send({ status: 1, message: 'Error al consultar la información del contacto', error: err });
+                } else {
+                    res.send(result);
+                }
             });
         });
     };

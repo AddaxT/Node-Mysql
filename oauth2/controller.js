@@ -1,5 +1,10 @@
 var oauth2orize = require('oauth2orize');
+var passport = require('passport');
+var BasicStrategy = require('passport-http').BasicStrategy;
+var BearerStrategy = require('passport-http-bearer').Strategy
 var moment = require('moment');
+var user = require('../user/model');
+var client = require('../client/model');
 
 var server = oauth2orize.createServer();
 
@@ -38,7 +43,7 @@ server.serializeClient(function (client, callback) {
 server.deserializeClient(function (id, callback) {
     executeQuery(
         'deserializeClient',
-        'SELECT client_id, client_secret, redirect_uri FROM oauth_clients WHERE client_id = ?',
+        'SELECT id, name, secret, userId FROM oauth_clients WHERE id = ?',
         id,
         function (result) {
             var oAuthClient = result[0];
@@ -50,22 +55,14 @@ server.deserializeClient(function (id, callback) {
 });
 
 server.grant(oauth2orize.grant.code(function (client, redirectUri, user, ares, callback) {
-    var code = new Code({
-        value: UUID(),
-        clientId: client._id,
-        redirectUri: redirectUri,
-        userId: user._id
-    });
     executeQuery(
         'grant',
-        'INSERT INTO oauth_authorization_codes(authorization_code, expires, scope, client_id, user_id, redirect_uri) VALUES (?, ?, ?, ?, ?, ?)',
+        'INSERT INTO oauth_authorization_codes(value, redirectUri, userId, clientId) VALUES (?, ?, ?, ?)',
         [
-            code.value,
-            moment().add(1, 'day'),
-            'ALL',
-            code.clientId,
-            code.userId,
-            redirectUri
+            UUID(),
+            redirectUri,
+            user._id,
+            client._id,
         ],
         function (result) {
             return callback(null, code.value);
@@ -97,7 +94,7 @@ server.exchange(oauth2orize.exchange.code(function (client, code, redirectUri, c
                     };
                     return executeQuery(
                         'grant token',
-                        'INSERT INTO oauth_tokens(access_token, access_token_expires_on, client_id, user_id) VALUES (?, ?, ?, ?)',
+                        'INSERT INTO oauth_tokens(value, expires_on, clientId, userId) VALUES (?, ?, ?, ?)',
                         [
                             tokenPayload.value,
                             moment().add(1, 'day'),
@@ -105,12 +102,36 @@ server.exchange(oauth2orize.exchange.code(function (client, code, redirectUri, c
                             tokenPayload.userId
                         ],
                         function (result) {
-                            return callback(null, new Token(tokenPayload));
+                            return callback(null, tokenPayload);
                         });
                 },
                 errorCallback);
         }, callback);
 }));
+
+passport.use(new BasicStrategy(function (username, password, callback) { user.validate(username, password, callback) }));
+
+passport.use('client-basic', new BasicStrategy(function (clientId, clientSecret, callback) { client.validate(clientId, clientSecret, callback) }));
+
+passport.use(new BearerStrategy(
+    function (accessToken, callback) {
+        executeQuery(
+            'findToken',
+            'SELECT value, expires_on, clientId, userId FROM oauth_tokens WHERE value = ?',
+            accessToken,
+            function (result) {
+                if (!result && !result.length) {
+                    return callback(null, false);
+                }
+                var oAuthToken = result[0];
+                user.getUserById(token.userId, function (err, user) {
+                    if (err) { return callback(err); }
+                    if (!user) { return callback(null, false); }
+                    callback(null, user, { scope: '*' });
+                });
+            }, callback);
+    }
+));
 
 module.exports.authorization = [
     server.authorization(function (clientId, redirectUri, callback) {
@@ -129,10 +150,14 @@ module.exports.authorization = [
 ]
 
 module.exports.decision = [
-  server.decision()
+    server.decision()
 ]
 
 module.exports.token = [
-  server.token(),
-  server.errorHandler()
+    server.token(),
+    server.errorHandler()
 ]
+
+module.exports.isAuthenticated = passport.authenticate(['basic', 'bearer'], { session: false });
+module.exports.isClientAuthenticated = passport.authenticate('client-basic', { session: false });
+module.exports.isBearerAuthenticated = passport.authenticate('bearer', { session: false });
