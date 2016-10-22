@@ -72,7 +72,7 @@ server.grant(oauth2orize.grant.code(function (client, redirectUri, user, ares, c
 server.exchange(oauth2orize.exchange.code(function (client, code, redirectUri, callback) {
     executeQuery(
         'grant query',
-        'SELECT authorization_code, expires, scope, client_id, user_id, redirect_uri FROM oauth_authorization_codes WHERE authorization_code = ?',
+        'SELECT value, clientId, userId, redirectUri FROM oauth_authorization_codes WHERE value = ?',
         code,
         function (result) {
             if (!result || !result.length) {
@@ -84,7 +84,7 @@ server.exchange(oauth2orize.exchange.code(function (client, code, redirectUri, c
 
             executeQuery(
                 'grant remove',
-                'DELETE FROM oauth_authorization_codes WHERE authorization_code = ?',
+                'DELETE FROM oauth_authorization_codes WHERE value = ?',
                 code,
                 function (result) {
                     var tokenPayload = {
@@ -137,7 +137,7 @@ module.exports.authorization = [
     server.authorization(function (clientId, redirectUri, callback) {
         executeQuery(
             'authorization',
-            'SELECT client_id, client_secret, redirect_uri FROM oauth_clients WHERE client_id = ?',
+            'SELECT id, name, secret FROM oauth_clients WHERE id = ?',
             id,
             function (result) {
                 var oAuthClient = result[0];

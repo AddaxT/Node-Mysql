@@ -26,6 +26,7 @@ function User() {
                             console.log(err);
                             return res.send({ status: 1, message: 'Error al crear el usuario', error: err });
                         }
+                        return res.send({ status: 0, message: 'El usuario fue creado correctamente' });
                     });
                 });
             });
@@ -72,6 +73,6 @@ function User() {
             });
         });
     }
-})(User.prototype);
+}).call(User.prototype);
 
 module.exports = new User();

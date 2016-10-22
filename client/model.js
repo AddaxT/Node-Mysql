@@ -26,6 +26,7 @@ function User() {
                             console.log(err);
                             return res.send({ status: 1, message: 'Error al crear el usuario', error: err });
                         }
+                        return res.send({ status: 0, message: 'El cliente fue creado correctamente' });
                     });
                 });
             });
@@ -37,7 +38,7 @@ function User() {
                 console.log(err);
                 return callback(err);
             }
-            con.query("SELECT C.name, C.id, C.secret, C.userId FROM oauth_clients C WHERE C.id = ?", clientId, function (err, result) {
+            con.query("SELECT name, id, secret, userId FROM oauth_clients WHERE id = ?", clientId, function (err, result) {
                 if (err) {
                     console.log(err);
                     return callback(err);
@@ -53,6 +54,6 @@ function User() {
             });
         });
     }
-})(User.prototype);
+}).call(User.prototype);
 
 module.exports = new User();
